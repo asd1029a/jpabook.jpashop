@@ -2,8 +2,10 @@ package jpabook.jpashop.api;
 
 import jpabook.jpashop.domain.*;
 import jpabook.jpashop.repository.OrderRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -30,9 +32,29 @@ public class OrderApiController {
     @GetMapping("/api/v2/orders")
     public List<OrderDto> ordersV2(){
         List<Order> orders = orderRepository.findAllByString(new OrderSearch());
-        List<OrderDto> collect = orders.stream().map(o -> new OrderDto(o)).collect(Collectors.toList());
-        return collect;
+        List<OrderDto> result = orders.stream().map(o -> new OrderDto(o)).collect(Collectors.toList());
+        return result;
     }
+
+    @GetMapping("/api/v3/orders")
+    public List<OrderDto> ordersV3(){
+        List<Order> orders = orderRepository.findAllWithItem();
+        List<OrderDto> result = orders.stream().map(o -> new OrderDto(o)).collect(Collectors.toList());
+        return result;
+    }
+
+
+    @GetMapping("/api/v3.1/orders")
+    public List<OrderDto> ordersV3_page(@RequestParam(value = "offset",defaultValue = "0") int offset,
+                                        @RequestParam(value = "limit",defaultValue = "100") int limit
+                                        ){
+        List<Order> orders = orderRepository.findALlWithMemberDelivery(offset,limit);
+
+        List<OrderDto> result = orders.stream().map(o -> new OrderDto(o)).collect(Collectors.toList());
+        return result;
+    }
+
+    @Getter
     static class OrderDto{
 
         private Long orderId;
@@ -40,7 +62,7 @@ public class OrderApiController {
         private LocalDateTime orderDate;
         private OrderStatus orderStatus;
         private Address address;
-        private List<OrderItem> orderItems;
+        private List<OrderItemDto> orderItems;
 
         public OrderDto(Order o) {
             orderId = o.getId();
@@ -48,7 +70,22 @@ public class OrderApiController {
             orderDate = o.getOrderDate();
             orderStatus = o.getStatus();
             address = o.getDelivery().getAddress();
-            orderItems = o.getOrderItems();
+            o.getOrderItems().stream().forEach(orderItem -> orderItem.getItem().getName());
+            orderItems = o.getOrderItems().stream().map(orderItem -> new OrderItemDto(orderItem)).collect(Collectors.toList());
+        }
+    }
+
+    @Getter
+    static class OrderItemDto{
+
+        private String name;
+        private int orderPrice;
+        private int count;
+
+        public OrderItemDto(OrderItem orderItem) {
+            name = orderItem.getItem().getName();
+            orderPrice = orderItem.getOrderPrice();
+            count = orderItem.getCount();
         }
     }
 }
